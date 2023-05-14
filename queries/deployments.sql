@@ -6,7 +6,7 @@ WITH deploys_cloudbuild_github_gitlab AS (# Cloud Build, Github, Gitlab pipeline
       id as deploy_id,
       time_created,
       CASE WHEN source = "cloud_build" then JSON_EXTRACT_SCALAR(metadata, '$.substitutions.COMMIT_SHA')
-           WHEN source like "github%" then JSON_EXTRACT_SCALAR(metadata, '$.deployment.sha')
+           WHEN source like "github%" then JSON_EXTRACT_SCALAR(metadata, '$.pull_request.merge_commit_sha')
            WHEN source like "gitlab%" then COALESCE(
                                     # Data structure from GitLab Pipelines
                                     JSON_EXTRACT_SCALAR(metadata, '$.commit.id'),
@@ -25,7 +25,8 @@ WITH deploys_cloudbuild_github_gitlab AS (# Cloud Build, Github, Gitlab pipeline
       # Cloud Build Deployments
          (source = "cloud_build" AND JSON_EXTRACT_SCALAR(metadata, '$.status') = "SUCCESS")
       # GitHub Deployments
-      OR (source LIKE "github%" and event_type = "deployment_status" and JSON_EXTRACT_SCALAR(metadata, '$.deployment_status.state') = "success")
+      # OR (source LIKE "github%" and event_type = "deployment_status" and JSON_EXTRACT_SCALAR(metadata, '$.deployment_status.state') = "success")
+      OR (source LIKE "github%" and event_type = "pull_request" and JSON_EXTRACT_SCALAR(metadata, '$.pull_request.merged') = 'true' and JSON_EXTRACT_SCALAR(metadata, '$.pull_request.base.ref') = "master" and JSON_EXTRACT_SCALAR(metadata, '$.action') = "closed")
       # GitLab Pipelines 
       OR (source LIKE "gitlab%" AND event_type = "pipeline" AND JSON_EXTRACT_SCALAR(metadata, '$.object_attributes.status') = "success")
       # GitLab Deployments 
