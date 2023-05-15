@@ -38,6 +38,18 @@ resource "google_cloud_run_service" "cloudbuild_parser" {
     latest_revision = true
   }
 
+  metadata {
+    annotations = {
+      "run.googleapis.com/ingress" = "internal"
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      metadata[0].annotations,
+    ]
+  }
+
   autogenerate_revision_name = true
   depends_on = [
     google_project_service.data_source_services
@@ -46,7 +58,7 @@ resource "google_cloud_run_service" "cloudbuild_parser" {
 
 resource "google_pubsub_topic" "cloudbuild" {
   project = var.project_id
-  name    = "cloudbuild"
+  name    = "cloud-builds"
 }
 
 resource "google_pubsub_topic_iam_member" "service_account_editor" {
