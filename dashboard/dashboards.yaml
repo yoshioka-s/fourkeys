@@ -21,3 +21,9 @@ providers:
     allowUiUpdates: true
     options:
       path: /etc/grafana/dashboards
+  - name: NEXTA
+    type: file
+    updateIntervalSeconds: 100
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/nexta

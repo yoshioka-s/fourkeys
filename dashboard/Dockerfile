@@ -14,20 +14,21 @@
 
 FROM grafana/grafana
 
-# Remove / disable these to require authentication
+# uncomment these to skip authentication
 ENV GF_AUTH_DISABLE_LOGIN_FORM "true"
 ENV GF_AUTH_ANONYMOUS_ENABLED "true"
 ENV GF_AUTH_ANONYMOUS_ORG_ROLE "Admin"
 
 # during setup, this variable will be configured onto the Cloud Run service
 # (default here to "US" as a fallback)
-ENV BQ_REGION "US"
+ENV BQ_REGION "JA"
 
 # Setting grafana config
 COPY grafana.ini /etc/grafana
 
 # Provisioning dashboards and datasources
 COPY fourkeys_dashboard.json /etc/grafana/dashboards/
+COPY nexta_dashboard.json /etc/grafana/nexta/
 COPY dashboards.yaml /etc/grafana/provisioning/dashboards
 COPY datasource.yaml /etc/grafana/provisioning/datasources
 
