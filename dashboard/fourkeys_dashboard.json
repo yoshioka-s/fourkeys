@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 2,
-  "id": 1,
+  "id": 2,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -39,6 +39,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "Hours",
@@ -52,6 +53,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -65,7 +67,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "dashed"
             }
           },
           "mappings": [],
@@ -78,7 +80,11 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 60
+              },
+              {
+                "color": "#EAB839",
+                "value": 120
               }
             ]
           }
@@ -115,7 +121,7 @@
           "location": "US",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "SELECT\n day,\n IFNULL(ANY_VALUE(med_time_to_change)/60, 0) AS median_time_to_change, # Hours\nFROM (\n SELECT\n  d.deploy_id,\n  TIMESTAMP_TRUNC(d.time_created, DAY) AS day,\n  PERCENTILE_CONT(\n  IF(TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE) > 0, TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE), NULL), # Ignore automated pushes\n  0.5) # Median\n  OVER (PARTITION BY TIMESTAMP_TRUNC(d.time_created, DAY)) AS med_time_to_change, # Minutes\n FROM four_keys.deployments d, d.changes\n LEFT JOIN four_keys.changes c ON changes = c.change_id\n)\nGROUP BY day\nORDER BY day",
+          "rawSql": "SELECT\n day,\n IFNULL(ANY_VALUE(med_time_to_change), 0) AS median_time_to_change, # Hours\nFROM (\n SELECT\n  d.deploy_id,\n  TIMESTAMP_TRUNC(d.time_created, DAY) AS day,\n  PERCENTILE_CONT(\n  IF(TIMESTAMP_DIFF(d.time_created, c.time_created, HOUR) > 0, TIMESTAMP_DIFF(d.time_created, c.time_created, HOUR), NULL), # Ignore automated pushes\n  0.5) # Median\n  OVER (PARTITION BY TIMESTAMP_TRUNC(d.time_created, DAY)) AS med_time_to_change, # Minutes\n FROM four_keys.deployments d, d.changes\n LEFT JOIN four_keys.changes c ON changes = c.change_id\n)\nGROUP BY day\nORDER BY day",
           "refId": "A",
           "sql": {
             "columns": [
@@ -134,9 +140,21 @@
             ],
             "limit": 50
           }
+        },
+        {
+          "datasource": {
+            "name": "Expression",
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "expression": "60",
+          "hide": false,
+          "refId": "B",
+          "type": "math"
         }
       ],
       "title": "コミットからデプロイまでのリードタイム",
+      "transformations": [],
       "type": "timeseries"
     },
     {
@@ -208,9 +226,10 @@
           "fields": "/^lead_time_to_change$/",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.3.1",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -222,7 +241,7 @@
           "location": "US",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "SELECT \n CASE\n  WHEN median_time_to_change < 24 * 60 then \"One day\"\n  WHEN median_time_to_change < 168 * 60 then \"One week\"\n  WHEN median_time_to_change < 730 * 60 then \"One month\"\n  WHEN median_time_to_change < 730 * 6 * 60 then \"Six months\"\n  ELSE \"One year\"\n END as lead_time_to_change\nFROM (\n SElECT\n  IFNULL(ANY_VALUE(med_time_to_change), 0) AS median_time_to_change\n FROM (\n   SELECT\n   PERCENTILE_CONT(\n    IF(TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE) > 0, TIMESTAMP_DIFF(d.time_created, c.time_created, MINUTE), NULL), # Ignore automated pushes\n    0.5) # Median\n    OVER () AS med_time_to_change, # Minutes\n  FROM four_keys.deployments d, d.changes\n  LEFT JOIN four_keys.changes c ON changes = c.change_id\n  WHERE d.time_created > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH))\n )\n)",
+          "rawSql": "SElECT IFNULL(ANY_VALUE(med_time_to_change), 0) AS lead_time_to_change\nFROM (\n  SELECT\n  PERCENTILE_CONT(\n  IF(TIMESTAMP_DIFF(d.time_created, c.time_created, HOUR) > 0, TIMESTAMP_DIFF(d.time_created, c.time_created, HOUR), NULL), # Ignore automated pushes\n  0.5) # Median\n  OVER () AS med_time_to_change, # Minutes\nFROM four_keys.deployments d, d.changes\nLEFT JOIN four_keys.changes c ON changes = c.change_id\nWHERE d.time_created > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH))\n)",
           "refId": "A",
           "sql": {
             "columns": [
@@ -257,8 +276,10 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
+            "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "bars",
@@ -269,6 +290,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -282,7 +304,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "line"
             }
           },
           "mappings": [],
@@ -296,7 +318,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 3
               }
             ]
           }
@@ -333,7 +355,7 @@
           "location": "US",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "SELECT\nTIMESTAMP_TRUNC(time_created, DAY) AS day,\nCOUNT(distinct deploy_id) AS deployments\nFROM\nfour_keys.deployments\nGROUP BY day\nORDER BY day",
+          "rawSql": "WITH last_month AS\n(SELECT\nTIMESTAMP(day) AS day\nFROM\nUNNEST(\nGENERATE_DATE_ARRAY(\n    \"2023-05-01\", CURRENT_DATE(),\n    INTERVAL 1 DAY)) AS day\n# FROM the start of the data\nWHERE day > (SELECT date(min(time_created)) FROM four_keys.events_raw)\n)\n\nSELECT\nTIMESTAMP_TRUNC(last_month.day, WEEK) as week,\nCOUNT(distinct deployments.day) as days_deployed\nFROM last_month\nLEFT JOIN(\n  SELECT\n  TIMESTAMP_TRUNC(time_created, DAY) AS day,\n  deploy_id\n  FROM four_keys.deployments) deployments ON deployments.day = last_month.day\nGROUP BY week",
           "refId": "A",
           "sql": {
             "columns": [
@@ -368,36 +390,29 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [
-            {
-              "options": {
-                "Daily": {
-                  "color": "purple",
-                  "index": 0,
-                  "text": "Elite Performance"
-                },
-                "Monthly": {
-                  "color": "yellow",
-                  "index": 2
-                },
-                "Weekly": {
-                  "color": "green",
-                  "index": 1
-                },
-                "Yearly": {
-                  "color": "red",
-                  "index": 3
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "#EAB839",
+                "value": 50
+              },
+              {
+                "color": "green",
+                "value": 80
+              },
+              {
+                "color": "#6ED0E0",
+                "value": 100
               }
             ]
           }
@@ -420,12 +435,13 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "/^deployment_frequency$/",
+          "fields": "accomplished_week_rate",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.3.1",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -437,7 +453,7 @@
           "location": "US",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "WITH last_month AS\n(SELECT\nTIMESTAMP(day) AS day\nFROM\nUNNEST(\nGENERATE_DATE_ARRAY(\n    DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH), CURRENT_DATE(),\n    INTERVAL 1 DAY)) AS day\n# FROM the start of the data\nWHERE day > (SELECT date(min(time_created)) FROM four_keys.events_raw)\n)\n\nSELECT\nCASE WHEN daily THEN \"Daily\" \n     WHEN weekly THEN \"Weekly\" \n      # If at least one per month, then Monthly\n     WHEN PERCENTILE_CONT(monthly_deploys, 0.5) OVER () >= 1 THEN  \"Monthly\" \n     ELSE \"Yearly\"\n     END as deployment_frequency\nFROM (\n  SELECT\n  # If the median number of days per week is more than 3, then Daily\n  PERCENTILE_CONT(days_deployed, 0.5) OVER() >= 3 AS daily,\n  # If most weeks have a deployment, then Weekly\n  PERCENTILE_CONT(week_deployed, 0.5) OVER() >= 1 AS weekly,\n\n  # Count the number of deployments per month.  \n  # Cannot mix aggregate and analytic functions, so calculate the median in the outer select statement\n  SUM(week_deployed) OVER(partition by TIMESTAMP_TRUNC(week, MONTH)) monthly_deploys\n  FROM(\n      SELECT\n      TIMESTAMP_TRUNC(last_month.day, WEEK) as week,\n      MAX(if(deployments.day is not null, 1, 0)) as week_deployed,\n      COUNT(distinct deployments.day) as days_deployed\n      FROM last_month\n      LEFT JOIN(\n        SELECT\n        TIMESTAMP_TRUNC(time_created, DAY) AS day,\n        deploy_id\n        FROM four_keys.deployments) deployments ON deployments.day = last_month.day\n      GROUP BY week)\n )\nLIMIT 1",
+          "rawSql": "WITH last_month AS\n(SELECT\nTIMESTAMP(day) AS day\nFROM\nUNNEST(\nGENERATE_DATE_ARRAY(\n    DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH), CURRENT_DATE(),\n    INTERVAL 1 DAY)) AS day\n# FROM the start of the data\nWHERE day > (SELECT date(min(time_created)) FROM four_keys.events_raw)\n)\n\nSELECT ROUND(COUNTIF(days_deployed >= 3)/COUNT(1) * 100) AS accomplished_week_rate\nFROM(\n    SELECT\n    TIMESTAMP_TRUNC(last_month.day, WEEK) as week,\n    COUNT(distinct deployments.day) as days_deployed\n    FROM last_month\n    LEFT JOIN(\n      SELECT\n      TIMESTAMP_TRUNC(time_created, DAY) AS day,\n      deploy_id\n      FROM four_keys.deployments) deployments ON deployments.day = last_month.day\n    GROUP BY week)",
           "refId": "A",
           "sql": {
             "columns": [
@@ -472,6 +488,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "Hours",
@@ -485,6 +502,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -641,9 +659,10 @@
           "fields": "/^med_time_to_resolve$/",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.3.1",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -690,8 +709,10 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
+            "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -702,6 +723,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -850,9 +872,10 @@
           "fields": "/^change_fail_rate$/",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.3.1",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -889,15 +912,14 @@
       "type": "stat"
     }
   ],
-  "refresh": "",
-  "schemaVersion": 37,
-  "style": "dark",
+  "refresh": false,
+  "schemaVersion": 38,
   "tags": [],
   "templating": {
     "list": []
   },
   "time": {
-    "from": "2022-08-01T03:00:00.000Z",
+    "from": "now-30d",
     "to": "now"
   },
   "timepicker": {
@@ -933,3 +955,4 @@
   "version": 2,
   "weekStart": ""
 }
+
