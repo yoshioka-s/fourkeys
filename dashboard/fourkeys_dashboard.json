@@ -79,11 +79,11 @@
                 "value": null
               },
               {
-                "color": "red",
+                "color": "yellow",
                 "value": 60
               },
               {
-                "color": "#EAB839",
+                "color": "red",
                 "value": 120
               }
             ]
@@ -168,39 +168,21 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [
-            {
-              "options": {
-                "One day": {
-                  "color": "purple",
-                  "index": 0
-                },
-                "One month": {
-                  "color": "yellow",
-                  "index": 2
-                },
-                "One week": {
-                  "color": "green",
-                  "index": 1
-                },
-                "One year": {
-                  "color": "red",
-                  "index": 4
-                },
-                "Six months": {
-                  "color": "red",
-                  "index": 3
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 60
+              },
+              {
+                "color": "red",
+                "value": 90
               }
             ]
           }
@@ -262,7 +244,7 @@
           }
         }
       ],
-      "title": "コミットからデプロイまでのリードタイム",
+      "title": "リードタイム（時間）",
       "type": "stat"
     },
     {
@@ -384,7 +366,7 @@
         "type": "grafana-bigquery-datasource",
         "uid": "P8042CABD7873BED6"
       },
-      "description": "",
+      "description": "週のうちデプロイできた日数",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -395,24 +377,16 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
-                "color": "red",
-                "value": 0
-              },
-              {
-                "color": "#EAB839",
-                "value": 50
+                "color": "yellow",
+                "value": 2
               },
               {
                 "color": "green",
-                "value": 80
-              },
-              {
-                "color": "#6ED0E0",
-                "value": 100
+                "value": 3
               }
             ]
           }
@@ -435,7 +409,7 @@
           "calcs": [
             "lastNotNull"
           ],
-          "fields": "accomplished_week_rate",
+          "fields": "/^average_deploy_days$/",
           "values": false
         },
         "textMode": "auto",
@@ -453,7 +427,7 @@
           "location": "US",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "WITH last_month AS\n(SELECT\nTIMESTAMP(day) AS day\nFROM\nUNNEST(\nGENERATE_DATE_ARRAY(\n    DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH), CURRENT_DATE(),\n    INTERVAL 1 DAY)) AS day\n# FROM the start of the data\nWHERE day > (SELECT date(min(time_created)) FROM four_keys.events_raw)\n)\n\nSELECT ROUND(COUNTIF(days_deployed >= 3)/COUNT(1) * 100) AS accomplished_week_rate\nFROM(\n    SELECT\n    TIMESTAMP_TRUNC(last_month.day, WEEK) as week,\n    COUNT(distinct deployments.day) as days_deployed\n    FROM last_month\n    LEFT JOIN(\n      SELECT\n      TIMESTAMP_TRUNC(time_created, DAY) AS day,\n      deploy_id\n      FROM four_keys.deployments) deployments ON deployments.day = last_month.day\n    GROUP BY week)",
+          "rawSql": "WITH last_month AS\n(SELECT\nTIMESTAMP(day) AS day\nFROM\nUNNEST(\nGENERATE_DATE_ARRAY(\n    DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH), CURRENT_DATE(),\n    INTERVAL 1 DAY)) AS day\n# FROM the start of the data\nWHERE day > (SELECT date(min(time_created)) FROM four_keys.events_raw)\n)\n\nSELECT ROUND(SUM(days_deployed)/COUNT(1) * 100)/100 AS average_deploy_days\nFROM(\n    SELECT\n    TIMESTAMP_TRUNC(last_month.day, WEEK) as week,\n    COUNT(distinct deployments.day) as days_deployed\n    FROM last_month\n    LEFT JOIN(\n      SELECT\n      TIMESTAMP_TRUNC(time_created, DAY) AS day,\n      deploy_id\n      FROM four_keys.deployments) deployments ON deployments.day = last_month.day\n    GROUP BY week)",
           "refId": "A",
           "sql": {
             "columns": [
@@ -474,7 +448,7 @@
           }
         }
       ],
-      "title": "デプロイ頻度",
+      "title": "週あたりデプロイ日数（日/週）",
       "type": "stat"
     },
     {
@@ -601,39 +575,21 @@
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [
-            {
-              "options": {
-                "One day": {
-                  "color": "green",
-                  "index": 0
-                },
-                "One month": {
-                  "color": "red",
-                  "index": 2
-                },
-                "One week": {
-                  "color": "yellow",
-                  "index": 1
-                },
-                "One year": {
-                  "color": "red",
-                  "index": 4
-                },
-                "Six months": {
-                  "color": "red",
-                  "index": 3
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 3
+              },
+              {
+                "color": "red",
+                "value": 6
               }
             ]
           }
@@ -649,7 +605,7 @@
       "id": 7,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -674,7 +630,7 @@
           "location": "US",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "SELECT\nCASE WHEN med_time_to_resolve < 24  then \"One day\"\n     WHEN med_time_to_resolve < 168  then \"One week\"\n     WHEN med_time_to_resolve < 730  then \"One month\"\n     WHEN med_time_to_resolve < 730 * 6 then \"Six months\"\n     ELSE \"One year\"\n     END as med_time_to_resolve,\nFROM (\n  SELECT\n  #### Median time to resolve\n  PERCENTILE_CONT(\n    TIMESTAMP_DIFF(time_resolved, time_created, HOUR), 0.5)\n    OVER() as med_time_to_resolve,\n  FROM four_keys.incidents\n  # Limit to 3 months\n  WHERE time_created > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH)))\nLIMIT 1",
+          "rawSql": "\n  SELECT\n  #### Median time to resolve\n  PERCENTILE_CONT(\n    TIMESTAMP_DIFF(time_resolved, time_created, HOUR), 0.5)\n    OVER() as med_time_to_resolve,\n  FROM four_keys.incidents\n  # Limit to 3 months\n  WHERE time_created > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH))",
           "refId": "A",
           "sql": {
             "columns": [
@@ -695,7 +651,7 @@
           }
         }
       ],
-      "title": "不具合発生から修正までの時間の中央値",
+      "title": "不具合修正までの時間（時間）",
       "type": "stat"
     },
     {
@@ -737,7 +693,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "line"
             }
           },
           "mappings": [],
@@ -750,7 +706,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 0.25
               }
             ]
           }
@@ -816,37 +772,27 @@
         "type": "grafana-bigquery-datasource",
         "uid": "P8042CABD7873BED6"
       },
-      "description": "",
+      "description": "不具合の発生したデプロイ数 / デプロイ数",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "mappings": [
-            {
-              "options": {
-                "0-15%": {
-                  "color": "green",
-                  "index": 0
-                },
-                "16-45%": {
-                  "color": "yellow",
-                  "index": 1
-                },
-                "46-60%": {
-                  "color": "red",
-                  "index": 2
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 25
+              },
+              {
+                "color": "red",
+                "value": 50
               }
             ]
           }
@@ -887,7 +833,7 @@
           "location": "US",
           "project": "gglobo-deployment-frq-hdg-prd",
           "rawQuery": true,
-          "rawSql": "SELECT\nCASE WHEN change_fail_rate <= .15 then \"0-15%\"\n     WHEN change_fail_rate < .46 then \"16-45%\"\n     ELSE \"46-60%\" end as change_fail_rate\nFROM \n (SELECT\n    IF(COUNT(DISTINCT change_id) = 0,0, SUM(IF(i.incident_id is NULL, 0, 1)) / COUNT(DISTINCT deploy_id)) as change_fail_rate\n  FROM four_keys.deployments d, d.changes\n  LEFT JOIN four_keys.changes c ON changes = c.change_id\n  LEFT JOIN(SELECT\n          incident_id,\n          change,\n          time_resolved\n          FROM four_keys.incidents i,\n          i.changes change) i ON i.change = changes\n  # Limit to 3 months\n  WHERE d.time_created > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH))\n  )\nLIMIT1",
+          "rawSql": "SELECT\n    IF(COUNT(DISTINCT change_id) = 0,0, SUM(IF(i.incident_id is NULL, 0, 1)) / COUNT(DISTINCT deploy_id)　* 100) as change_fail_rate\n  FROM four_keys.deployments d, d.changes\n  LEFT JOIN four_keys.changes c ON changes = c.change_id\n  LEFT JOIN(SELECT\n          incident_id,\n          change,\n          time_resolved\n          FROM four_keys.incidents i,\n          i.changes change) i ON i.change = changes\n  # Limit to 3 months\n  WHERE d.time_created > TIMESTAMP(DATE_SUB(CURRENT_DATE(), INTERVAL 3 MONTH))",
           "refId": "A",
           "sql": {
             "columns": [
@@ -908,11 +854,11 @@
           }
         }
       ],
-      "title": "不具合数 / デプロイ数",
+      "title": "デプロイ失敗率（％）",
       "type": "stat"
     }
   ],
-  "refresh": false,
+  "refresh": "",
   "schemaVersion": 38,
   "tags": [],
   "templating": {
@@ -952,7 +898,6 @@
   "timezone": "utc",
   "title": "Four Keys",
   "uid": "yVtwoQ4nk",
-  "version": 2,
+  "version": 1,
   "weekStart": ""
 }
-
